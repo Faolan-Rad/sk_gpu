@@ -80,11 +80,19 @@ Example usage:
 // Options for customizing code dependencies!
 
 #ifndef ARRAY_MALLOC
+#ifdef __APPLE__
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #define ARRAY_MALLOC malloc
 #endif
 #ifndef ARRAY_FREE
+#ifdef __APPLE__
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #define ARRAY_FREE ::free
 #endif
 

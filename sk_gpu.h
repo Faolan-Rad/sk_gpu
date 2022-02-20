@@ -49,6 +49,10 @@ sk_gpu.h
 			#define _SKG_GL_DESKTOP
 			#define _SKG_GL_LOAD_GLX
 		#endif
+	#elif defined(__APPLE__)
+		#define _SKG_GL_DESKTOP
+		#define _SKG_GL_LOAD_GLFW
+		#define NDEBUG
 	#elif defined(_WIN32)
 		#define _SKG_GL_DESKTOP
 		#define _SKG_GL_LOAD_WGL
@@ -414,6 +418,8 @@ typedef struct skg_swapchain_t {
 	void *_egl_surface;
 #elif defined(_SKG_GL_LOAD_GLX)
 	void *_x_window;
+#elif defined(_SKG_GL_LOAD_GLFW)
+	void *_fw_window;
 #elif defined(_SKG_GL_LOAD_EMSCRIPTEN) && defined(SKG_MANUAL_SRGB)
 	skg_tex_t      _surface;
 	skg_tex_t      _surface_depth;
@@ -439,6 +445,8 @@ typedef struct skg_platform_data_t {
 	void *_glx_fb_config;
 	void *_glx_drawable;
 	void *_glx_context;
+#elif defined(_SKG_GL_LOAD_GLFW)
+	void *_fw_window;
 #endif
 } skg_platform_data_t;
 #endif
@@ -2039,7 +2047,11 @@ const char *skg_semantic_to_d3d(skg_el_semantic_ semantic) {
 // OpenGL Implementation                 //
 ///////////////////////////////////////////
 
+#ifdef __APPLE__
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 
@@ -2064,6 +2076,12 @@ const char *skg_semantic_to_d3d(skg_el_semantic_ semantic) {
 	GLXFBConfig  glxFBConfig;
 	GLXDrawable  glxDrawable;
 	GLXContext   glxContext;
+#elif defined(_SKG_GL_LOAD_GLFW)
+    #define GLFW_INCLUDE_GLCOREARB
+	#define GLFW_INCLUDE_GLEXT
+	#include <GLFW/glfw3.h>
+
+    GLFWwindow* window;
 #elif defined(_SKG_GL_LOAD_WGL)
 	#pragma comment(lib, "opengl32.lib")
 	#define WIN32_LEAN_AND_MEAN
@@ -2646,6 +2664,38 @@ void skg_setup_xlib(void *dpy, void *vi, void *fbconfig, void *drawable) {
 
 ///////////////////////////////////////////
 
+int32_t gl_init_glfw() {
+#ifdef _SKG_GL_LOAD_GLFW
+  /* Initialize the library */
+  if ( !glfwInit() )
+  {
+     return -1;
+  }
+
+#ifdef __APPLE__
+  /* We need to explicitly ask for a 3.2 context on OS X */
+  glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 2);
+  glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+  glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#endif
+
+  /* Create a windowed mode window and its OpenGL context */
+  window = glfwCreateWindow( 1280, 720, "Hello World", NULL, NULL );
+  if (!window)
+  {
+     glfwTerminate();
+     return -1;
+  }
+
+  /* Make the window's context current */
+  glfwMakeContextCurrent(window);
+#endif // _SKG_GL_LOAD_GLFW
+	return 1;
+}
+
+///////////////////////////////////////////
+
 int32_t skg_init(const char *app_name, void *adapter_id) {
 #if   defined(_SKG_GL_LOAD_WGL)
 	int32_t result = gl_init_wgl();
@@ -2653,6 +2703,8 @@ int32_t skg_init(const char *app_name, void *adapter_id) {
 	int32_t result = gl_init_egl();
 #elif defined(_SKG_GL_LOAD_GLX)
 	int32_t result = gl_init_glx();
+#elif defined(_SKG_GL_LOAD_GLFW)
+	int32_t result = gl_init_glfw();
 #elif defined(_SKG_GL_LOAD_EMSCRIPTEN)
 	int32_t result = gl_init_emscripten();
 #endif
@@ -2705,7 +2757,6 @@ int32_t skg_init(const char *app_name, void *adapter_id) {
 		}
 	}, nullptr);
 #endif // !defined(NDEBUG) && !defined(_SKG_GL_WEB)
-	
 	// Some default behavior
 	glEnable   (GL_DEPTH_TEST);  
 	glEnable   (GL_CULL_FACE);
@@ -2803,6 +2854,8 @@ skg_platform_data_t skg_get_platform_data() {
 	result._glx_fb_config = glxFBConfig;
 	result._glx_drawable  = &glxDrawable;
 	result._glx_context   = glxContext;
+#elif defined(_SKG_GL_LOAD_GLFW)
+	result._fw_window = window;
 #endif
 	return result;
 }
@@ -2902,7 +2955,7 @@ void skg_buffer_bind(const skg_buffer_t *buffer, skg_bind_t bind, uint32_t offse
 	if (buffer->type == skg_buffer_type_constant)
 		glBindBufferBase(buffer->_target, bind.slot, buffer->_buffer);
 	else if (buffer->type == skg_buffer_type_vertex) {
-#ifdef _SKG_GL_WEB
+#if defined(_SKG_GL_WEB) || defined(__APPLE__)
 		glBindBuffer(buffer->_target, buffer->_buffer);
 #else
 		glBindVertexBuffer(bind.slot, buffer->_buffer, offset, buffer->stride);
@@ -3001,6 +3054,8 @@ skg_shader_stage_t skg_shader_stage_create(const void *file_data, size_t shader_
 	// Convert the prefix if it doesn't match the GL version we're using
 #if   defined(_SKG_GL_ES)
 	const char   *prefix_gl      = "#version 320 es";
+#elif defined(__APPLE__)
+	const char   *prefix_gl      = "#version 410";
 #elif defined(_SKG_GL_DESKTOP)
 	const char   *prefix_gl      = "#version 450";
 #elif defined(_SKG_GL_WEB)
@@ -3387,6 +3442,10 @@ skg_swapchain_t skg_swapchain_create(void *hwnd, skg_tex_fmt_ format, skg_tex_fm
 	result._x_window = hwnd;
 	result.width  = requested_width;
 	result.height = requested_height;
+#elif defined(_SKG_GL_LOAD_GLFW)
+	result._fw_window = hwnd;
+	result.width  = requested_width;
+	result.height = requested_height;
 #else
 	int32_t viewport[4];
 	glGetIntegerv(GL_VIEWPORT, viewport);
@@ -3488,6 +3547,8 @@ void skg_swapchain_present(skg_swapchain_t *swapchain) {
 	eglSwapBuffers(egl_display, swapchain->_egl_surface);
 #elif defined(_SKG_GL_LOAD_GLX)
 	glXSwapBuffers(xDisplay, (Drawable) swapchain->_x_window);
+#elif defined(_SKG_GL_LOAD_GLFW)
+	glfwSwapBuffers((GLFWwindow*)swapchain->_fw_window);
 #elif defined(_SKG_GL_LOAD_EMSCRIPTEN) && defined(SKG_MANUAL_SRGB)
 	float clear[4] = { 0,0,0,1 };
 	skg_tex_target_bind(nullptr);
@@ -3514,6 +3575,9 @@ void skg_swapchain_bind(skg_swapchain_t *swapchain) {
 	skg_tex_target_bind(nullptr);
 #elif defined(_SKG_GL_LOAD_GLX)
 	glXMakeCurrent(xDisplay, (Drawable)swapchain->_x_window, glxContext);
+	skg_tex_target_bind(nullptr);
+#elif defined(_SKG_GL_LOAD_GLFW)
+	glfwMakeContextCurrent((GLFWwindow*)swapchain->_fw_window);
 	skg_tex_target_bind(nullptr);
 #endif
 }
@@ -3936,8 +4000,11 @@ uint32_t skg_tex_fmt_to_gl_type(skg_tex_fmt_ format) {
 ///////////////////////////////////////////
 // Common Code                           //
 ///////////////////////////////////////////
-
+#ifdef __APPLE__
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #include <string.h>
 #include <stdio.h>
 #include <math.h>

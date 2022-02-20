@@ -2,7 +2,11 @@
 
 #include "../../../src/sk_gpu_dev.h"
 
+#ifdef __APPLE__
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 
 #define XR_APP_IMPL
 #include "../../common/xr_app.h"

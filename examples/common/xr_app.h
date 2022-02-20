@@ -94,7 +94,11 @@ void openxr_log_callback(void (*callback)(const char *text));
 
 #ifdef XR_APP_IMPL
 
+#ifdef __APPLE__
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #include <math.h>
 #include <string.h>
 

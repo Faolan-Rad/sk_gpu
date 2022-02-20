@@ -7,6 +7,9 @@
 #include <X11/Xlib.h>
 #include <GL/glx.h>
 Display *x_dpy;
+#elif defined(__APPLE__)
+#include <GLFW/glfw3.h>
+GLFWwindow* fw_window;
 #elif defined(__EMSCRIPTEN__)
 #include <emscripten.h>
 #include <emscripten/html5.h>
@@ -189,11 +192,34 @@ bool main_init() {
 
 	skg_setup_xlib(x_dpy, x_vi, x_fb_config, &x_win);
 	app_hwnd = (void *)x_win;
+#elif defined(__APPLE__)
+  /* Initialize the library */
+  if ( !glfwInit() )
+  {
+     return -1;
+  }
+	
+
+  /* We need to explicitly ask for a 3.2 context on OS X */
+  glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 2);
+  glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+  glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  /* Create a windowed mode window and its OpenGL context */
+  fw_window = glfwCreateWindow( 1280, 720, "Hello World", NULL, NULL );
+  if (!fw_window)
+  {
+     glfwTerminate();
+     return -1;
+  }
+  
+app_hwnd = (void *)fw_window;
 #endif
 
 	skg_callback_log([](skg_log_ level, const char *text) { 
 		printf("[%d] %s\n", level, text);
 	});
+
 	if (!skg_init(app_name, nullptr)) 
 		return false;
 	app_swapchain = skg_swapchain_create(app_hwnd, skg_tex_fmt_rgba32_linear, skg_tex_fmt_none, app_resize_width, app_resize_height);

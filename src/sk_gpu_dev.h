@@ -49,6 +49,10 @@ sk_gpu.h
 			#define _SKG_GL_DESKTOP
 			#define _SKG_GL_LOAD_GLX
 		#endif
+	#elif defined(__APPLE__)
+		#define _SKG_GL_DESKTOP
+		#define _SKG_GL_LOAD_GLFW
+		#define NDEBUG
 	#elif defined(_WIN32)
 		#define _SKG_GL_DESKTOP
 		#define _SKG_GL_LOAD_WGL
