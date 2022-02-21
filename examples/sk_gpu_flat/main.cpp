@@ -204,9 +204,12 @@ bool main_init() {
   glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 2);
   glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  
+  glfwWindowHint(GLFW_DEPTH_BITS, 24);
+  glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+  glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+  glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
   /* Create a windowed mode window and its OpenGL context */
-  fw_window = glfwCreateWindow( 1280, 720, app_name, NULL, NULL );
+  fw_window = glfwCreateWindow( app_resize_width, app_resize_height, app_name, NULL, NULL );
   if (!fw_window)
   {
      glfwTerminate();
