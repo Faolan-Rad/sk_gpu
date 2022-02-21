@@ -39,6 +39,7 @@ target_link_libraries(skg_flatscreen
     "-framework IOKit"
     "-framework Cocoa"
     "-framework Carbon"
+    GLEW
     GLFW)
 else()
 target_link_libraries(skg_flatscreen

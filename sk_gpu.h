@@ -2077,10 +2077,8 @@ const char *skg_semantic_to_d3d(skg_el_semantic_ semantic) {
 	GLXDrawable  glxDrawable;
 	GLXContext   glxContext;
 #elif defined(_SKG_GL_LOAD_GLFW)
-    #define GLFW_INCLUDE_GLCOREARB
-	#define GLFW_INCLUDE_GLEXT
+    #include <GL/glew.h>
 	#include <GLFW/glfw3.h>
-
     GLFWwindow* window;
 #elif defined(_SKG_GL_LOAD_WGL)
 	#pragma comment(lib, "opengl32.lib")
@@ -2674,9 +2672,10 @@ int32_t gl_init_glfw() {
 	printf(glfwGetVersionString());
 
 #ifdef __APPLE__
-  /* We need to explicitly ask for a 3.2 context on OS X */
-  glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 2);
+  /* We need to explicitly ask for a 4.1 context on OS X */
+  glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 4);
+  glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 1);
+
   glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #endif
@@ -2695,6 +2694,10 @@ int32_t gl_init_glfw() {
 
   /* Make the window's context current */
   glfwMakeContextCurrent(window);
+
+  // start GLEW extension handler
+  glewExperimental = GL_TRUE;
+  glewInit();
 #endif // _SKG_GL_LOAD_GLFW
 	return 1;
 }
@@ -2881,7 +2884,7 @@ bool skg_capability(skg_cap_ capability) {
 	switch (capability) {
 	case skg_cap_tex_layer_select: return check_ext("GL_AMD_vertex_shader_layer");
 	case skg_cap_wireframe:
-#ifdef _SKG_GL_WEB
+#if defined(_SKG_GL_WEB)
 		return false;
 #else
 		return glPolygonMode != nullptr;
@@ -2893,7 +2896,7 @@ bool skg_capability(skg_cap_ capability) {
 ///////////////////////////////////////////
 
 void skg_draw(int32_t index_start, int32_t index_base, int32_t index_count, int32_t instance_count) {
-#ifdef _SKG_GL_WEB
+#if defined(_SKG_GL_WEB)
 	glDrawElementsInstanced(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, (void*)(index_start*sizeof(uint32_t)), instance_count);
 #else
 	glDrawElementsInstancedBaseVertex(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, (void*)(index_start*sizeof(uint32_t)), instance_count, index_base);
@@ -2960,7 +2963,7 @@ void skg_buffer_bind(const skg_buffer_t *buffer, skg_bind_t bind, uint32_t offse
 	if (buffer->type == skg_buffer_type_constant)
 		glBindBufferBase(buffer->_target, bind.slot, buffer->_buffer);
 	else if (buffer->type == skg_buffer_type_vertex) {
-#if defined(_SKG_GL_WEB) || defined(__APPLE__)
+#if defined(_SKG_GL_WEB)
 		glBindBuffer(buffer->_target, buffer->_buffer);
 #else
 		glBindVertexBuffer(bind.slot, buffer->_buffer, offset, buffer->stride);
@@ -3185,7 +3188,7 @@ skg_shader_t skg_shader_create_manual(skg_shader_meta_t *meta, skg_shader_stage_
 		glDeleteProgram(result._program);
 		result._program = 0;
 	} else {
-#ifdef _SKG_GL_WEB
+#if defined(_SKG_GL_WEB)
 		for (size_t i = 0; i < meta->buffer_count; i++) {
 			char t_name[64];
 			snprintf(t_name, 64, "type_%s", meta->buffers[i].name);
@@ -3527,7 +3530,7 @@ void skg_swapchain_resize(skg_swapchain_t *swapchain, int32_t width, int32_t hei
 	swapchain->width  = width;
 	swapchain->height = height;
 
-#ifdef _SKG_GL_WEB
+#if defined(_SKG_GL_WEB)
 	skg_tex_fmt_ color_fmt = swapchain->_surface.format;
 	skg_tex_fmt_ depth_fmt = swapchain->_surface_depth.format;
 
@@ -4576,9 +4579,11 @@ skg_shader_stage_t skg_shader_file_create_stage(const skg_shader_file_t *file, s
 #if defined(SKG_DIRECT3D11) || defined(SKG_DIRECT3D12)
 	language = skg_shader_lang_hlsl;
 #elif defined(SKG_OPENGL)
-	#if   defined(_SKG_GL_WEB) || defined(__APPLE__)
+	#if   defined(_SKG_GL_WEB)
 		language = skg_shader_lang_glsl_web;
 	#elif defined(_SKG_GL_ES)
+		language = skg_shader_lang_glsl_es;
+	#elif defined(__APPLE__)
 		language = skg_shader_lang_glsl_es;
 	#elif defined(_SKG_GL_DESKTOP)
 		language = skg_shader_lang_glsl;

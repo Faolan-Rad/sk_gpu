@@ -104,7 +104,12 @@ void resize_swapchain(int width, int height) {
 	skg_tex_set_contents_arr(&app_screen_depth, nullptr, 1, app_width, app_height, app_multisample);
 	skg_tex_attach_depth    (&app_screen, &app_screen_depth);
 }
+///////////////////////////////////////////
 
+static void error_callback(int error, const char* description)
+{
+    fprintf(stderr, "Error: %s\n", description);
+}
 ///////////////////////////////////////////
 
 bool main_init() {
@@ -198,14 +203,17 @@ bool main_init() {
   {
      return -1;
   }
-	
-  /* We need to explicitly ask for a 3.2 context on OS X */
-  glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 2);
+
+
+glfwSetErrorCallback(error_callback);
+  /* We need to explicitly ask for a 4.1 context on OS X */
+  glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 4);
+  glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 1);
+
   glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
   glfwWindowHint(GLFW_DEPTH_BITS, 24);
-  glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
   glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
   /* Create a windowed mode window and its OpenGL context */
@@ -215,8 +223,12 @@ bool main_init() {
      glfwTerminate();
      return -1;
   }
-  
-app_hwnd = (void *)fw_window;
+  glfwMakeContextCurrent(fw_window);
+  glfwSetWindowSizeCallback(fw_window, [](GLFWwindow* window, int width, int height)
+{
+		resize_swapchain(width, height);
+});
+  app_hwnd = (void *)fw_window;
 #endif
 
 	skg_callback_log([](skg_log_ level, const char *text) { 
@@ -260,7 +272,7 @@ int main_step(double t, void *) {
 	glfwPollEvents();
 #endif		
 	skg_draw_begin();
-	float clear_color[4] = { 0,0,0,1 };
+	float clear_color[4] = { 1,0,0,1 };
 	skg_tex_target_bind(&app_screen);
 	skg_target_clear(true, clear_color);
 
@@ -271,7 +283,6 @@ int main_step(double t, void *) {
 	hmm_mat4 proj = HMM_Perspective(90, app_swapchain.width / (float)app_swapchain.height, 0.01f, 1000);
 
 	app_render((float)t, view, proj);
-
 	skg_tex_copy_to_swapchain(&app_screen, &app_swapchain);
 	skg_swapchain_bind(&app_swapchain);
 	skg_swapchain_present(&app_swapchain);
