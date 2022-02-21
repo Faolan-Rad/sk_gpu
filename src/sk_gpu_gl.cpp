@@ -628,6 +628,7 @@ int32_t gl_init_glfw() {
   {
      return -1;
   }
+	printf(glfwGetVersionString());
 
 #ifdef __APPLE__
   /* We need to explicitly ask for a 3.2 context on OS X */
@@ -636,9 +637,9 @@ int32_t gl_init_glfw() {
   glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #endif
-
+  glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
   /* Create a windowed mode window and its OpenGL context */
-  window = glfwCreateWindow( 1280, 720, "Hello World", NULL, NULL );
+  window = glfwCreateWindow( 1280, 720, "Dummy GL Window", NULL, NULL );
   if (!window)
   {
      glfwTerminate();

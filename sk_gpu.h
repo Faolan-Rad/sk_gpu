@@ -2671,6 +2671,7 @@ int32_t gl_init_glfw() {
   {
      return -1;
   }
+	printf(glfwGetVersionString());
 
 #ifdef __APPLE__
   /* We need to explicitly ask for a 3.2 context on OS X */
@@ -2679,9 +2680,9 @@ int32_t gl_init_glfw() {
   glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #endif
-
+  glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
   /* Create a windowed mode window and its OpenGL context */
-  window = glfwCreateWindow( 1280, 720, "Hello World", NULL, NULL );
+  window = glfwCreateWindow( 1280, 720, "Dummy GL Window", NULL, NULL );
   if (!window)
   {
      glfwTerminate();
@@ -4571,7 +4572,7 @@ skg_shader_stage_t skg_shader_file_create_stage(const skg_shader_file_t *file, s
 #if defined(SKG_DIRECT3D11) || defined(SKG_DIRECT3D12)
 	language = skg_shader_lang_hlsl;
 #elif defined(SKG_OPENGL)
-	#if   defined(_SKG_GL_WEB)
+	#if   defined(_SKG_GL_WEB) || defined(__APPLE__)
 		language = skg_shader_lang_glsl_web;
 	#elif defined(_SKG_GL_ES)
 		language = skg_shader_lang_glsl_es;

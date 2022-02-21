@@ -199,14 +199,14 @@ bool main_init() {
      return -1;
   }
 	
-
   /* We need to explicitly ask for a 3.2 context on OS X */
   glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 2);
   glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  
   /* Create a windowed mode window and its OpenGL context */
-  fw_window = glfwCreateWindow( 1280, 720, "Hello World", NULL, NULL );
+  fw_window = glfwCreateWindow( 1280, 720, app_name, NULL, NULL );
   if (!fw_window)
   {
      glfwTerminate();
@@ -253,8 +253,9 @@ int main_step(double t, void *) {
 	while (XPending(x_dpy)) {
 		XNextEvent(x_dpy, &event);
 	}
-#endif
-
+#elif defined(__APPLE__)
+	glfwPollEvents();
+#endif		
 	skg_draw_begin();
 	float clear_color[4] = { 0,0,0,1 };
 	skg_tex_target_bind(&app_screen);
